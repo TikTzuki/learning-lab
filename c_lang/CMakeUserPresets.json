@@ -1,0 +1,9 @@
+{
+    "version": 4,
+    "vendor": {
+        "conan": {}
+    },
+    "include": [
+        "/home/tik/Desktop/repositories/leetcode/c_lang/build/CMakePresets.json"
+    ]
+}
