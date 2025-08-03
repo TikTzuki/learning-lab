@@ -1,12 +1,86 @@
-Assume variable A = 2 and B = 3.
-A = 0010
-B = 0011
 
-| Operator          | Description                                                                                                                                                                                                                                                                                      | Example       |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| & (AND)           | It performs a Boolean AND operation on each bit of its integer arguments.                                                                                                                                                                                                                        | (A & B) is 2  |
-| \| (OR)           | It performs a Boolean OR operation on each bit of its integer arguments.                                                                                                                                                                                                                         | (A \| B) is 3 |
-| & (XOR)           | It performs a Boolean exclusive OR operation on each bit of its integer arguments. Exclusive OR means that either operand one is true or operand two is true, but not both.                                                                                                                      | (A ^ B) is 1  |
-| !(NOT)            | It is a unary operator and operates by reversing all the bits in the operand.                                                                                                                                                                                                                    | (!A ) is -3   |
-| << (Left Shift)   | It moves all the bits in its first operand to the left by the number of places specified in the second operand. New bits are filled with zeros. Shifting a value left by one position is equivalent to multiplying it by 2, shifting two positions is equivalent to multiplying by 4, and so on. | (A << 1) is 4 |
-| \>> (Right Shift) | Binary Right Shift Operator. The left operand’s value is moved right by the number of bits specified by the right operand.                                                                                                                                                                       | (A >> 1) is 1 |
+# 🧪 learning-lab
+
+Welcome to **learning-lab** — a curated personal sandbox for algorithm practice, language exploration, and system-level experimentation. This repository serves as a central archive of LeetCode problem solutions, language-specific experiments, and foundational code patterns across **C/C++**, **Java**, **Kotlin**, and **Rust**.
+
+---
+
+## 📁 Repository Structure
+
+```text
+learning-lab/
+│
+├── cpp/              # C/C++ LeetCode solutions, templates, and DS/Algo implementations
+├── java/             # Java-based algorithms and exploration (OOP patterns, threading, etc.)
+├── kotlin/           # Kotlin practice and functional programming snippets
+├── rust/             # Rust experiments, ownership models, and systems code
+├── notes/            # Personal notes, research findings, and design references
+├── templates/        # Reusable code templates for contests or fast setup
+└── README.md         # This file
+```
+
+---
+
+## 🧠 Purpose
+
+This repository is not a tutorial or teaching resource for others but rather a **learning journal** and **technical sandbox** for:
+
+* Solving LeetCode and competitive programming problems
+* Exploring multiple programming paradigms
+* Practicing language features and low-level constructs
+* Recording common patterns, caveats, and optimizations
+* Experimenting with ideas before using them in production or larger projects
+
+---
+
+## 🔧 Technologies Used
+
+| Language | Purpose                                                 |
+| -------- | ------------------------------------------------------- |
+| C / C++  | Performance-intensive practice, STL, memory control     |
+| Java     | Object-oriented solutions, concurrency, JVM exploration |
+| Rust     | Safe systems programming, memory safety, performance    |
+
+---
+
+## 🏗️ How to Use
+
+> *You can clone and explore any folder independently. Each folder is language-scoped and may contain LeetCode problem IDs, topic-based subfolders, or custom test cases.*
+
+### Clone the repository:
+
+```bash
+git clone https://github.com/TikTzuki/learning-lab.git
+cd learning-lab
+```
+
+### Compile examples (C++ example):
+
+```bash
+cd cpp/101-symmetric-tree
+g++ -std=c++17 main.cpp -o solution
+./solution
+```
+
+> You’ll find comments or `README.md` files in some subdirectories explaining edge cases, performance, or language-specific insights.
+
+---
+
+## 📚 Topics Covered
+
+* Data Structures: Trees, Graphs, Hash Maps, Tries
+* Algorithms: DFS, BFS, DP, Backtracking, Bitmasking
+* Language idioms: Smart pointers in Rust, sealed classes in Kotlin, JVM memory handling
+* Design patterns: Strategy, Builder, Factory (especially in Java/Kotlin)
+
+---
+
+## 🧾 Disclaimer
+
+This is a **personal repository** used for learning, experimenting, and archiving technical growth. Solutions here may not always represent best practices but reflect an ongoing learning process.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
