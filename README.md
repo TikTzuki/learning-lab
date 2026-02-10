@@ -1,86 +1,71 @@
+# learning-lab
 
-# 🧪 learning-lab
-
-Welcome to **learning-lab** — a curated personal sandbox for algorithm practice, language exploration, and system-level experimentation. This repository serves as a central archive of LeetCode problem solutions, language-specific experiments, and foundational code patterns across **C/C++**, **Java**, **Kotlin**, and **Rust**.
+A personal knowledge base for algorithm practice, design patterns, blockchain, cryptography, and systems-level
+experimentation across **Java**, **Rust**, and **C/C++**.
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 learning-lab/
+├── leetcode-solutions/     # LeetCode problem solutions
+│   ├── java/               #   Java/Kotlin (Gradle)
+│   ├── rust/               #   Rust (Cargo)
+│   └── cpp/                #   C/C++ (CMake)
 │
-├── cpp/              # C/C++ LeetCode solutions, templates, and DS/Algo implementations
-├── java/             # Java-based algorithms and exploration (OOP patterns, threading, etc.)
-├── kotlin/           # Kotlin practice and functional programming snippets
-├── rust/             # Rust experiments, ownership models, and systems code
-├── notes/            # Personal notes, research findings, and design references
-├── templates/        # Reusable code templates for contests or fast setup
-└── README.md         # This file
+├── design-patterns/        # OOP design pattern implementations
+│   └── java/               #   Command, Observer, Prototype, State, Type Object
+│
+├── blockchain/             # Blockchain & smart contracts
+│   ├── rust/               #   Block, chain, hashing (Rust)
+│   └── smart-contract/     #   Casper network counter contract
+│
+├── cryptography/           # Cryptography & Ethereum
+│   └── rust/               #   EC curves, modular inverse, ETH wallet
+│
+├── jni/                    # Java Native Interface demos
+│   ├── java/               #   Java side (HelloWorld, JListDemo)
+│   └── rust/               #   Rust side (cdylib)
+│
+└── README.md
 ```
 
----
-
-## 🧠 Purpose
-
-This repository is not a tutorial or teaching resource for others but rather a **learning journal** and **technical sandbox** for:
-
-* Solving LeetCode and competitive programming problems
-* Exploring multiple programming paradigms
-* Practicing language features and low-level constructs
-* Recording common patterns, caveats, and optimizations
-* Experimenting with ideas before using them in production or larger projects
+Each topic folder contains language subfolders with their own build system (Gradle, Cargo, or CMake).
 
 ---
 
-## 🔧 Technologies Used
+## Technologies
 
-| Language | Purpose                                                 |
-| -------- | ------------------------------------------------------- |
-| C / C++  | Performance-intensive practice, STL, memory control     |
-| Java     | Object-oriented solutions, concurrency, JVM exploration |
-| Rust     | Safe systems programming, memory safety, performance    |
+| Language | Build System | Used In                                           |
+|----------|--------------|---------------------------------------------------|
+| Java     | Gradle       | LeetCode solutions, design patterns, JNI          |
+| Rust     | Cargo        | LeetCode solutions, blockchain, cryptography, JNI |
+| C / C++  | CMake        | LeetCode solutions                                |
 
 ---
 
-## 🏗️ How to Use
-
-> *You can clone and explore any folder independently. Each folder is language-scoped and may contain LeetCode problem IDs, topic-based subfolders, or custom test cases.*
-
-### Clone the repository:
+## Quick Start
 
 ```bash
-git clone https://github.com/TikTzuki/learning-lab.git
-cd learning-lab
+# Java LeetCode solutions
+cd leetcode-solutions/java && ./gradlew build
+
+# Rust LeetCode solutions
+cd leetcode-solutions/rust && cargo build
+
+# C++ solutions
+cd leetcode-solutions/cpp && cmake -B build && cmake --build build
+
+# Cryptography
+cd cryptography/rust && cargo build
+
+# Smart contract
+cd blockchain/smart-contract && make build-contract
 ```
 
-### Compile examples (C++ example):
-
-```bash
-cd cpp/101-symmetric-tree
-g++ -std=c++17 main.cpp -o solution
-./solution
-```
-
-> You’ll find comments or `README.md` files in some subdirectories explaining edge cases, performance, or language-specific insights.
-
 ---
 
-## 📚 Topics Covered
+## License
 
-* Data Structures: Trees, Graphs, Hash Maps, Tries
-* Algorithms: DFS, BFS, DP, Backtracking, Bitmasking
-* Language idioms: Smart pointers in Rust, sealed classes in Kotlin, JVM memory handling
-* Design patterns: Strategy, Builder, Factory (especially in Java/Kotlin)
-
----
-
-## 🧾 Disclaimer
-
-This is a **personal repository** used for learning, experimenting, and archiving technical growth. Solutions here may not always represent best practices but reflect an ongoing learning process.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
+MIT License — see [LICENSE](./LICENSE) for details.

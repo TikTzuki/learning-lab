@@ -35,3 +35,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Rust ###
+target/
+Cargo.lock
+
+### C/C++ ###
+cmake-build-*/
+CMakeFiles/
+
+### Environment ###
+.env
