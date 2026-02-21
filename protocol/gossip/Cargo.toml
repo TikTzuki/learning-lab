@@ -1,0 +1,10 @@
+[package]
+name = "gossip"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = "1"
+tokio-stream = { version = "0.1" }
+dyson_log = "0.0.6"
+log = "0.4.28"

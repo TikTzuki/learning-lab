@@ -1,0 +1,384 @@
+import {client as WebSocketClient} from 'websocket';
+import {
+    BenchmarkClient,
+    BenchmarkObj,
+    createStringOfSizeKB,
+    ProgressObj,
+    RequestMessage,
+    ResponseMessage
+} from "../../base/dto";
+import {randomUUID} from "node:crypto";
+
+export default class BenchmarkWsClient implements BenchmarkClient {
+    id: string;
+    keep_alive: boolean;
+    client: any;
+    connection: any;
+    times: any[];
+    connection_fails: number;
+    connection_errors: number;
+    count: number;
+    last_count: number[];
+    benchmark_obj: BenchmarkObj;
+    connection_progress_obj: ProgressObj;
+    benchmark_progress_obj: ProgressObj;
+    pingTimer?: NodeJS.Timeout;
+
+    /**
+     * Initializes all the data that will be needed to create and use the websocket client
+     *
+     * @param benchmark_obj {Object} An object storing data that each client will need to connect to the benchmark
+     *      server, and send requests
+     * @param connection_progress_obj {Object} An object storing data on the connections currently being made each round
+     * @param benchmark_progress_obj {Object} An object storing data on all the requests currently being made each round
+     * @returns void
+     */
+    constructor(
+        benchmark_obj: BenchmarkObj,
+        connection_progress_obj: ProgressObj,
+        benchmark_progress_obj: ProgressObj
+    ) {
+        this.id = randomUUID().toString();
+        /**
+         * Signifies whether the connection should be kept alive, and therefore reconnected if closed
+         * @type {boolean}
+         */
+        this.keep_alive = true;
+
+        /**
+         * Client connection to the websocket server
+         * @type {WebSocketClient}
+         */
+        this.client = null;
+
+        /**
+         * The websocket connection to the server
+         * @type {any}
+         */
+        this.connection = undefined;
+
+        /**
+         * List of requests made for the round for this client with the requests corresponding timestamps
+         * @type {Array}
+         */
+        this.times = [];
+
+        /**
+         * The number of connections that have failed
+         * @type {number}
+         */
+        this.connection_fails = 0;
+
+        /**
+         * The number of errors that have occurred
+         * @type {number}
+         */
+        this.connection_errors = 0;
+
+        /**
+         * The number of successfully completed requests for a given round
+         * @type {number}
+         */
+        this.count = 0;
+
+        /**
+         * An array storing the last 20 count readings
+         * @type {Array}
+         */
+        this.last_count = new Array(20);
+
+        /**
+         * An object storing data that each client will need to connect to the benchmark server, and send requests
+         * {
+         *      websocket_address {string} IP address of the websocket server to connect to
+         *      websocket_port: {number} Port number of the websocket to connect to
+         *      connection_interval: {number} The number of websocket connections to add each round
+         *      request_interval: {number} The number of requests to sound out per connected client per round
+         *      request_timeout: {number} The number of minutes to wait before abandoning a request
+         * }
+         * @type {Object}
+         */
+        this.benchmark_obj = benchmark_obj;
+
+        /**
+         * An object storing data on the connections currently being made each round
+         * {
+         *      counter: {number} the number of clients currently created each round,
+         *      total: {number} the total number of clients expected to me created each round,
+         *      message: {string} the message to output before starting the connection process
+         * }
+         * @type {Object}
+         */
+        this.connection_progress_obj = connection_progress_obj;
+
+        /**
+         * An object storing data on all the requests currently being made each round
+         * {
+         *      counter: {number} the number of requests currently completed each round,
+         *      total: {number} the total number of requests expected to me completed each round,
+         *      message: {string} the message to output before starting the benchmarking process
+         * }
+         * @type {Object}
+         */
+        this.benchmark_progress_obj = benchmark_progress_obj;
+
+        // Redefine push to shift if > 20
+        const origPush = this.last_count.push;
+        this.last_count.push = function (...args: number[]) {
+            if (this.length >= 20) {
+                this.shift();
+            }
+            return origPush.apply(this, args);
+        };
+    }
+
+    /**
+     * Sends the requests from the websocket clients to the server
+     *
+     * @returns {Promise} resolves once all requests have been completed, or the process times out
+     */
+    sendData(round: number): Promise<any[]> {
+        this.count = 0;
+        this.times = [];
+
+        return new Promise<any[]>((resolve, _reject) => {
+
+            const messageSizeKB = Number(process.env.MESSAGE_SIZE_KB); // Default 1KB if not specified
+            const content = createStringOfSizeKB(messageSizeKB, 'a');
+            // send a total number of requests equal to the specified request interval
+            for (let i = 0; i < this.benchmark_obj.request_interval; i++) {
+                // ensure the connection is defines before sending, otherwise resolve
+                if (this.connection !== undefined) {
+
+                    // create a JSON string containing the current request number
+                    let request: RequestMessage = {
+                        client_id: this.id,
+                        round: round,
+                        c: i,
+                        content: content
+                    };
+
+                    // set the starting timestamp for the request to now
+                    this.times[i] = {'start': Date.now()};
+
+                    // send the request to the websocket server
+                    this.connection.sendUTF(JSON.stringify(request));
+
+                } else {
+                    resolve([]);
+                }
+
+                // if the request being sent is that last in the loop..
+                if (i === this.benchmark_obj.request_interval - 1) {
+                    const self = this;
+                    var timer = 0;
+
+                    // ... check once per second if the function should resolve
+                    const finishCount = setInterval(function () {
+
+                        // The function should resolve if:
+                        // 1. There are no requests with a "finish" index which is undefined
+                        let readyToResolve = self.times.every(function (time: any, _message_index: number) {
+                            return time['finish'] !== undefined;
+                        });
+
+                        // 2. The count tracker of successful requests is equal to the number of requests sent
+                        // 3. The number of successful requests is the same as the number of successful requests from
+                        //    20 seconds ago AND more than 90% of requests were successful or the request process has
+                        //    been running for 5 minutes
+                        if (readyToResolve
+                            || ((self.count / self.benchmark_obj.request_interval) === 1)
+                            || (self.count === self.last_count[0]
+                                && (((self.count / self.benchmark_obj.request_interval) > .9)
+                                    || (timer++ >= 100)
+                                ))) {
+
+                            // stop checking if the request process has finished, and resolve with the times array
+                            clearInterval(finishCount);
+                            resolve(self.times);
+                        }
+
+                        // Track the count of successful request.
+                        // The array stores the last 20 checks (20 seconds).
+                        // If the number of successful requests is not changing, we can assume no more
+                        // will be coming in.
+                        self.last_count.push(self.count);
+
+                    }, 1000);
+                }
+            }
+        });
+    }
+
+    /**
+     * Sets up a connection to the websocket server
+     * and defines event actions
+     *
+     * @returns {Promise} resolves once connected
+     */
+    connect(): Promise<void> {
+        return new Promise<void>((resolve, _reject) => {
+
+            // allows this to be used inside nested functions
+            const self = this;
+
+            // initialize websocket client
+            this.client = new WebSocketClient();
+
+            /**
+             *
+             * WEBSOCKET CLIENT EVENT FUNCTION
+             *
+             */
+
+            /**
+             * Failed Connection Event
+             */
+            this.client.on('connectFailed', function (_error: any) {
+
+                // increment failed connection tracker by 1
+                self.connection_fails++;
+
+                // retry connection (wrapped in an async function)
+                let connect = async function () {
+                    self.connect();
+                };
+                connect().then(() => {
+                    self.connection_progress_obj.counter++;
+                    resolve();
+                });
+            });
+
+            /**
+             * Successful Connection Event
+             */
+            this.client.on('connect', function (connection: any) {
+
+                // assign connection variable to member property
+                self.connection = connection;
+
+                // increment connection counter by 1
+                self.connection_progress_obj.counter++;
+
+                // start heartbeat to keep connection alive
+                self.ping();
+
+                /**
+                 * Connection Error Event
+                 */
+                connection.on('error', function (_error: any) {
+
+                    // increment error tacker by 1
+                    self.connection_errors++;
+                    self.connection_progress_obj.counter--;
+                    //console.log("Connection Error: " + error.toString());
+
+                    // try to reconnect
+                    self.connect();
+                });
+
+                /**
+                 * Message Received Event
+                 */
+                connection.on('message', function (message: any) {
+
+                    // convert the incoming JSON string to an Object
+                    let data: ResponseMessage = JSON.parse(message.utf8Data);
+                    let message_marker = data.c;
+                    let received_timestamp = data.ts;
+
+                    // ensure incoming message has an already existing corresponding request in the times array
+                    if (self.times[message_marker] !== undefined) {
+
+                        // ensure the corresponding request in the times array does not already contain any data from
+                        // the websocket server.
+                        // This can happen if the server sends the 0 response twice, once when the client connects,
+                        // and again each round. For the sake of simple math, we just keep the first one.
+                        if (self.times[message_marker]['received'] === undefined
+                            && self.times[message_marker]['finish'] === undefined) {
+
+                            // store the corresponding timestamps in the times array
+                            self.times[message_marker]['received'] = received_timestamp;
+                            self.times[message_marker]['finish'] = Date.now();
+
+                            // increment the successful request counters by 1
+                            self.benchmark_progress_obj.counter++;
+                            self.count++;
+
+                        }
+                    }
+                });
+
+                /**
+                 * Connection Close Event
+                 */
+                connection.on('close', function () {
+                    self.connection_progress_obj.counter--;
+                    if (self.keep_alive) {
+                        self.connect();
+                    }
+                });
+
+
+                /**
+                 *
+                 * END OF WEBSOCKET CLIENT EVENT FUNCTION
+                 *
+                 */
+
+                resolve();
+            });
+
+            // define the websocket server url. Ex: ws://127.0.0.1:8080
+            let url = "ws://" + this.benchmark_obj.websocket_address + ":" + this.benchmark_obj.websocket_port;
+
+            // set the first timestamp request in the times array to now, as we will be expecting a response from the
+            // server once connected
+            this.times[0] = {'start': Date.now()};
+
+            // connect to the websocket server
+            this.client.connect(url);
+
+        });
+    }
+
+    /**
+     * Pings the server at a regular interval.
+     * Websockets require a "heartbeat" in order to keep the conneciton open.
+     * @returns {void}
+     */
+    ping() {
+
+        // allows this to be used inside nested functions
+        let self = this
+
+        // send a request to the websocket server ever 5 seconds
+        this.pingTimer = setInterval(function () {
+
+            // create a JSON string containing the current request number
+            // we use 0 as to not interer with any unsigned ints on the server end, as well as any possible
+            // pening responses from the server
+            let data: RequestMessage = {
+                round: 0,
+                client_id: self.id,
+                c: 0,
+                content: "ping"
+            };
+
+            // send the request to the websocket server
+            self.connection.sendUTF(JSON.stringify(data));
+
+        }, 5000);
+    }
+
+    /**
+     * Closes the connection to the websocket server
+     * @returns {void}
+     */
+    close(): Promise<void> {
+        this.keep_alive = false;
+        clearInterval(this.pingTimer);
+        this.connection.close();
+        return Promise.resolve();
+    }
+};

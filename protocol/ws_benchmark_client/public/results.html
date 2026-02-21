@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Benchmark Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .result-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-highlight {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+
+        .comparison-chart {
+            height: 300px;
+        }
+
+        .result-table {
+            font-size: 0.9rem;
+        }
+
+        .export-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="index.html">Home</a>
+            <a class="nav-link active" href="results.html">Results</a>
+            <a class="nav-link" href="monitor.html">Monitor</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-bar me-2"></i>Benchmark Results</h2>
+                <div>
+                    <button class="btn btn-outline-primary me-2" id="refreshResults">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-primary" id="exportResults">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Total Benchmarks</h5>
+                    <div class="metric-highlight" id="totalBenchmarks">12</div>
+                    <small class="text-muted">Completed tests</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Avg Throughput</h5>
+                    <div class="metric-highlight" id="avgThroughput">2,450 msg/s</div>
+                    <small class="text-muted">Across all tests</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Avg Latency</h5>
+                    <div class="metric-highlight" id="avgLatency">45.2 ms</div>
+                    <small class="text-muted">Response time</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">Success Rate</h5>
+                    <div class="metric-highlight" id="successRate">99.7%</div>
+                    <small class="text-muted">All scenarios</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Controls -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label">Scenario Filter</label>
+                            <select class="form-select" id="scenarioFilter">
+                                <option value="all">All Scenarios</option>
+                                <option value="kafka">Kafka Producer</option>
+                                <option value="request-response">Request/Response</option>
+                                <option value="ws-consumer">WebSocket Consumer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date Range</label>
+                            <select class="form-select" id="dateFilter">
+                                <option value="today">Today</option>
+                                <option value="week">Last 7 days</option>
+                                <option value="month">Last 30 days</option>
+                                <option value="all">All time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Sort By</label>
+                            <select class="form-select" id="sortBy">
+                                <option value="date">Date (newest)</option>
+                                <option value="throughput">Throughput</option>
+                                <option value="latency">Latency</option>
+                                <option value="duration">Duration</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button class="btn btn-outline-secondary" id="applyFilters">
+                                    <i class="fas fa-filter me-1"></i>Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Comparison Chart -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line me-2"></i>Performance Comparison</h5>
+                </div>
+                <div class="card-body">
+                    <canvas class="comparison-chart" id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Results -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list me-2"></i>Recent Results</h5>
+                    <span class="badge bg-primary" id="resultCount">12 results</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover result-table">
+                            <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Scenario</th>
+                                <th>Duration</th>
+                                <th>Connections</th>
+                                <th>Throughput</th>
+                                <th>Latency</th>
+                                <th>Success Rate</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                            <!-- Results will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Analysis -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie me-2"></i>Scenario Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas height="200" id="scenarioChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-area me-2"></i>Performance Trends</h5>
+                </div>
+                <div class="card-body">
+                    <canvas height="200" id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="export-section">
+                <h5><i class="fas fa-file-export me-2"></i>Export Options</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-primary w-100 mb-2" onclick="exportToCSV()">
+                            <i class="fas fa-file-csv me-2"></i>Export to CSV
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-success w-100 mb-2" onclick="exportToJSON()">
+                            <i class="fas fa-file-code me-2"></i>Export to JSON
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-danger w-100 mb-2" onclick="exportToPDF()">
+                            <i class="fas fa-file-pdf me-2"></i>Export to PDF
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100 mb-2" onclick="generateReport()">
+                            <i class="fas fa-file-alt me-2"></i>Generate Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Sample data
+    const sampleResults = [
+        {
+            id: 1,
+            date: '2025-01-06 14:30:15',
+            scenario: 'Kafka Producer',
+            duration: '120s',
+            connections: 50,
+            throughput: '2,840 msg/s',
+            latency: '35.2 ms',
+            successRate: '99.8%'
+        },
+        {
+            id: 2,
+            date: '2025-01-06 13:15:42',
+            scenario: 'Request/Response',
+            duration: '180s',
+            connections: 100,
+            throughput: '1,950 req/s',
+            latency: '48.7 ms',
+            successRate: '99.2%'
+        },
+        {
+            id: 3,
+            date: '2025-01-06 12:45:28',
+            scenario: 'WebSocket Consumer',
+            duration: '300s',
+            connections: 25,
+            throughput: '3,200 msg/s',
+            latency: '28.4 ms',
+            successRate: '100%'
+        }
+    ];
+
+    // Chart initialization
+    const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+    const comparisonChart = new Chart(comparisonCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Kafka Producer', 'Request/Response', 'WebSocket Consumer'],
+            datasets: [{
+                label: 'Throughput (msg/s)',
+                data: [2840, 1950, 3200],
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                yAxisID: 'y'
+            }, {
+                label: 'Latency (ms)',
+                data: [35.2, 48.7, 28.4],
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {display: true, text: 'Throughput (msg/s)'}
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {display: true, text: 'Latency (ms)'},
+                    grid: {drawOnChartArea: false}
+                }
+            }
+        }
+    });
+
+    const scenarioCtx = document.getElementById('scenarioChart').getContext('2d');
+    const scenarioChart = new Chart(scenarioCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Kafka Producer', 'Request/Response', 'WebSocket Consumer'],
+            datasets: [{
+                data: [5, 4, 3],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(75, 192, 192, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: [{
+                label: 'Average Throughput',
+                data: [2200, 2450, 2680, 2840],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {display: true, text: 'Throughput (msg/s)'}
+                }
+            }
+        }
+    });
+
+    // Functions
+    function populateResultsTable() {
+        const tbody = document.getElementById('resultsTableBody');
+        tbody.innerHTML = '';
+
+        sampleResults.forEach(result => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                    <td>${result.date}</td>
+                    <td><span class="badge bg-secondary">${result.scenario}</span></td>
+                    <td>${result.duration}</td>
+                    <td>${result.connections}</td>
+                    <td>${result.throughput}</td>
+                    <td>${result.latency}</td>
+                    <td>${result.successRate}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="viewDetails(${result.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="downloadResult(${result.id})">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </td>
+                `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function viewDetails(id) {
+        alert(`Viewing details for result ID: ${id}`);
+    }
+
+    function downloadResult(id) {
+        alert(`Downloading result ID: ${id}`);
+    }
+
+    function exportToCSV() {
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + "Date,Scenario,Duration,Connections,Throughput,Latency,Success Rate\n"
+            + sampleResults.map(r =>
+                `${r.date},${r.scenario},${r.duration},${r.connections},${r.throughput},${r.latency},${r.successRate}`
+            ).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "benchmark_results.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function exportToJSON() {
+        const dataStr = JSON.stringify(sampleResults, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+        const link = document.createElement("a");
+        link.setAttribute("href", dataUri);
+        link.setAttribute("download", "benchmark_results.json");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function exportToPDF() {
+        alert("PDF export functionality would be implemented here");
+    }
+
+    function generateReport() {
+        alert("Report generation functionality would be implemented here");
+    }
+
+    // Event listeners
+    document.getElementById('refreshResults').addEventListener('click', () => {
+        location.reload();
+    });
+
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        // Filter functionality would be implemented here
+        populateResultsTable();
+    });
+
+    // Initialize
+    populateResultsTable();
+</script>
+</body>
+</html>

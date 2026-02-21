@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Request/Response WebSocket Benchmark</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready {
+            background-color: #28a745;
+        }
+
+        .status-running {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-error {
+            background-color: #dc3545;
+        }
+
+        .status-completed {
+            background-color: #17a2b8;
+        }
+
+        .metric-card {
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .progress-container {
+            display: none;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="index.html">Home</a>
+            <a class="nav-link" href="results.html">Results</a>
+            <a class="nav-link" href="monitor.html">Monitor</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-exchange-alt me-2"></i>Request/Response WebSocket Benchmark</h2>
+                <div>
+                    <span class="status-indicator status-ready" id="statusIndicator"></span>
+                    <span id="statusText">Ready</span>
+                </div>
+            </div>
+            <p class="text-muted">Test bidirectional WebSocket communication performance with configurable connection
+                and request patterns</p>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                This benchmark creates WebSocket connections, sends requests, and measures response times.
+                Monitor the logs for detailed performance metrics and insights.
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Configuration Panel -->
+        <div class="col-md-6">
+            <div class="config-section">
+                <h5><i class="fas fa-cog me-2"></i>WebSocket Configuration</h5>
+                <form id="benchmarkForm">
+                    <div class="mb-3">
+                        <label class="form-label" for="wsAddress">WebSocket Server Address</label>
+                        <input class="form-control" id="wsAddress" placeholder="127.0.0.1" type="text"
+                               value="127.0.0.1">
+                        <div class="form-text">WebSocket server address for connections</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="wsPort">WebSocket Port</label>
+                                <input class="form-control" id="wsPort" max="65535" min="1" type="number" value="3000">
+                                <div class="form-text">WebSocket server port</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="connectionInterval">Connection Count</label>
+                                <input class="form-control" id="connectionInterval" max="1000" min="1" type="number"
+                                       value="10">
+                                <div class="form-text">Number of concurrent WebSocket connections</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="requestInterval">Requests per Connection</label>
+                                <input class="form-control" id="requestInterval" max="10000" min="1" type="number"
+                                       value="100">
+                                <div class="form-text">Number of requests each connection will send</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="rounds">Test Rounds</label>
+                                <input class="form-control" id="rounds" max="10" min="1" type="number" value="1">
+                                <div class="form-text">Number of benchmark rounds to execute</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-success flex-fill" id="startBtn">
+                        <i class="fas fa-play me-1"></i>Start Benchmark
+                    </button>
+                    <button class="btn btn-danger flex-fill" id="stopBtn" style="display: none;">
+                        <i class="fas fa-stop me-1"></i>Stop Benchmark
+                    </button>
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Connection Progress</span>
+                            <span id="connectionStatus">0/0 connected</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 id="connectionProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Request Progress</span>
+                            <span id="requestStatus">0/0 requests</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                 id="requestProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Panel -->
+        <div class="col-md-6">
+            <div class="config-section">
+                <h5><i class="fas fa-chart-bar me-2"></i>Real-time Metrics</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Messages Sent</h6>
+                                <h4 class="card-text text-primary" id="messagesSent">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Responses Received</h6>
+                                <h4 class="card-text text-success" id="responsesReceived">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Throughput</h6>
+                                <h4 class="card-text text-info" id="throughput">0 req/s</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Avg Latency</h6>
+                                <h4 class="card-text text-warning" id="avgLatency">0 ms</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Success Rate</h6>
+                                <h4 class="card-text text-success" id="successRate">0%</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Elapsed Time</h6>
+                                <h4 class="card-text text-secondary" id="elapsedTime">0s</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="config-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-file-alt me-2"></i>Benchmark Logs</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="pauseLogs">
+                            <i class="fas fa-pause me-1"></i>Pause
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" id="clearLogs">
+                            <i class="fas fa-trash me-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="text-muted">Logs will appear here when the benchmark starts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/api.js"></script>
+<script>
+    // Global variables
+    let currentBenchmarkId = null;
+    let statusPollingInterval = null;
+    let logPollingActive = false;
+    let lastLogId = 0;
+    let logsPaused = false;
+
+    // DOM elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const progressContainer = document.getElementById('progressContainer');
+    const logContainer = document.getElementById('logContainer');
+
+    // Event listeners
+    startBtn.addEventListener('click', startBenchmark);
+    stopBtn.addEventListener('click', stopBenchmark);
+    document.getElementById('clearLogs').addEventListener('click', clearLogs);
+    document.getElementById('pauseLogs').addEventListener('click', toggleLogs);
+
+    function updateStatus(status, text) {
+        statusIndicator.className = `status-indicator status-${status}`;
+        statusText.textContent = text;
+    }
+
+    function resetUI() {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        startBtn.style.display = 'block';
+        stopBtn.style.display = 'none';
+        progressContainer.style.display = 'none';
+    }
+
+    async function startBenchmark() {
+        const connectionInterval = parseInt(document.getElementById('connectionInterval').value) || 10;
+        const requestInterval = parseInt(document.getElementById('requestInterval').value) || 100;
+        const rounds = parseInt(document.getElementById('rounds').value) || 1;
+
+        const config = {
+            wsAddress: document.getElementById('wsAddress').value,
+            wsPort: parseInt(document.getElementById('wsPort').value),
+            connectionInterval: connectionInterval,
+            requestInterval: requestInterval,
+            rounds: rounds
+        };
+
+        try {
+            updateStatus('running', 'Starting Request/Response benchmark...');
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+            progressContainer.style.display = 'block';
+
+            const result = await api.startBenchmark('request-response', config);
+            currentBenchmarkId = result.benchmarkId;
+
+            updateStatus('running', `Request/Response benchmark started (ID: ${result.benchmarkId})`);
+            startStatusPolling();
+            startLogPolling();
+
+        } catch (error) {
+            console.error('Error starting benchmark:', error);
+            updateStatus('error', `Error: ${error.message}`);
+            resetUI();
+        }
+    }
+
+    async function stopBenchmark() {
+        if (!currentBenchmarkId) return;
+
+        try {
+            await api.stopBenchmark(currentBenchmarkId);
+            updateStatus('completed', 'Request/Response benchmark stopped by user');
+            stopStatusPolling();
+            stopLogPolling();
+            resetUI();
+        } catch (error) {
+            console.error('Error stopping benchmark:', error);
+            updateStatus('error', `Error stopping benchmark: ${error.message}`);
+        }
+    }
+
+    function startStatusPolling() {
+        if (statusPollingInterval) return;
+
+        statusPollingInterval = setInterval(async () => {
+            if (!currentBenchmarkId) return;
+
+            try {
+                const status = await api.getBenchmarkStatus(currentBenchmarkId);
+                updateBenchmarkStatus(status);
+
+                if (status.status === 'completed' || status.status === 'error') {
+                    stopStatusPolling();
+                    resetUI();
+                    if (status.status === 'completed') {
+                        updateStatus('completed', 'Request/Response benchmark completed');
+                    } else {
+                        updateStatus('error', 'Request/Response benchmark failed');
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }, 1000);
+    }
+
+    function stopStatusPolling() {
+        if (statusPollingInterval) {
+            clearInterval(statusPollingInterval);
+            statusPollingInterval = null;
+        }
+    }
+
+    function updateBenchmarkStatus(status) {
+        // Update progress bars
+        const connectionProgress = Math.min(100, status.progress.connection);
+        const benchmarkProgress = Math.min(100, status.progress.benchmark);
+
+        document.getElementById('connectionProgress').style.width = `${connectionProgress}%`;
+        document.getElementById('requestProgress').style.width = `${benchmarkProgress}%`;
+
+        // Update metrics
+        document.getElementById('messagesSent').textContent = status.metrics.messagesSent.toLocaleString();
+        document.getElementById('responsesReceived').textContent = status.metrics.responsesReceived.toLocaleString();
+        document.getElementById('throughput').textContent = `${status.metrics.throughput.toFixed(1)} req/s`;
+        document.getElementById('avgLatency').textContent = `${status.metrics.latency.toFixed(1)} ms`;
+        document.getElementById('successRate').textContent = `${status.metrics.successRate.toFixed(1)}%`;
+
+        const elapsed = (Date.now() - status.startTime) / 1000;
+        document.getElementById('elapsedTime').textContent = `${elapsed.toFixed(0)}s`;
+
+        // Update status text
+        const totalConnections = parseInt(document.getElementById('connectionInterval').value) * parseInt(document.getElementById('rounds').value);
+        const totalRequests = totalConnections * parseInt(document.getElementById('requestInterval').value);
+
+        document.getElementById('connectionStatus').textContent = `${Math.round(connectionProgress)}% connected`;
+        document.getElementById('requestStatus').textContent = `${status.metrics.messagesSent}/${totalRequests} requests`;
+    }
+
+    async function startLogPolling() {
+        if (logPollingActive) return;
+
+        try {
+            await api.startLogPolling();
+            logPollingActive = true;
+            pollLogs();
+        } catch (error) {
+            console.error('Error starting log polling:', error);
+        }
+    }
+
+    async function stopLogPolling() {
+        if (!logPollingActive) return;
+
+        try {
+            await api.stopLogPolling();
+            logPollingActive = false;
+        } catch (error) {
+            console.error('Error stopping log polling:', error);
+        }
+    }
+
+    async function pollLogs() {
+        if (!logPollingActive) return;
+
+        try {
+            const response = await api.pollLogs(lastLogId, 30000);
+            if (response.logs && response.logs.length > 0) {
+                response.logs.forEach(log => addLogEntry(log));
+                lastLogId = Math.max(...response.logs.map(log => log.id));
+            }
+
+            // Continue polling if still active
+            if (logPollingActive) {
+                setTimeout(pollLogs, 100);
+            }
+        } catch (error) {
+            console.error('Error polling logs:', error);
+            if (logPollingActive) {
+                setTimeout(pollLogs, 5000); // Retry after 5 seconds
+            }
+        }
+    }
+
+    function addLogEntry(log) {
+        if (logsPaused) return;
+
+        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry text-${getLogClass(log.level)}`;
+
+        const sourceText = log.source ? `[${log.source}]` : '';
+        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${sourceText} ${log.message}`;
+
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+
+        // Keep only last 500 log entries for performance
+        while (logContainer.children.length > 500) {
+            logContainer.removeChild(logContainer.firstChild);
+        }
+    }
+
+    function getLogClass(level) {
+        switch (level) {
+            case 'error':
+                return 'danger';
+            case 'warn':
+                return 'warning';
+            case 'info':
+                return 'primary';
+            case 'debug':
+                return 'secondary';
+            default:
+                return 'dark';
+        }
+    }
+
+    function clearLogs() {
+        logContainer.innerHTML = '<div class="text-muted">Logs cleared...</div>';
+    }
+
+    function toggleLogs() {
+        logsPaused = !logsPaused;
+        const btn = document.getElementById('pauseLogs');
+        btn.innerHTML = logsPaused ?
+            '<i class="fas fa-play me-1"></i>Resume' :
+            '<i class="fas fa-pause me-1"></i>Pause';
+    }
+
+    // Initialize
+    updateStatus('ready', 'Ready');
+    addLogEntry({
+        id: 0,
+        timestamp: Date.now(),
+        level: 'info',
+        message: 'Request/Response WebSocket benchmark ready',
+        source: 'UI'
+    });
+</script>
+</body>
+</html>

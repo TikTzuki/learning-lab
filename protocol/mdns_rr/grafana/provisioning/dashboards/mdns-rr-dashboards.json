@@ -1,0 +1,398 @@
+{
+  "id": null,
+  "title": "MDNS Request-Response P2P Monitoring",
+  "tags": [
+    "libp2p",
+    "rust",
+    "p2p",
+    "mdns"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Server - Request Rate",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(libp2p_request_response_requests_total[5m])",
+          "legendFormat": "{{instance}} - Requests/sec",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP Server - Response Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(libp2p_request_response_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{instance}} - 95th percentile",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(libp2p_request_response_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{instance}} - 50th percentile",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Connected Peers",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "libp2p_connected_peers",
+          "legendFormat": "{{instance}} - Peers",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 2
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Process CPU Usage",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+          "legendFormat": "{{instance}} - CPU %",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Process Memory Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes / 1024 / 1024",
+          "legendFormat": "{{instance}} - RSS Memory (MB)",
+          "refId": "A"
+        },
+        {
+          "expr": "process_virtual_memory_bytes / 1024 / 1024",
+          "legendFormat": "{{instance}} - Virtual Memory (MB)",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "decbytes"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Network Bandwidth",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(libp2p_bandwidth_bytes_total{direction=\"inbound\"}[5m])",
+          "legendFormat": "{{instance}} - Inbound",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(libp2p_bandwidth_bytes_total{direction=\"outbound\"}[5m])",
+          "legendFormat": "{{instance}} - Outbound",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "Bps"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "System CPU Usage (Host)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "{{instance}} - System CPU %",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "System Memory Usage (Host)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+          "legendFormat": "{{instance}} - System Memory %",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Process CPU & Memory Combined",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+          "legendFormat": "{{instance}} - Process CPU %",
+          "refId": "A"
+        },
+        {
+          "expr": "(process_resident_memory_bytes / 1024 / 1024)",
+          "legendFormat": "{{instance}} - Process Memory (MB)",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "MDNS Discovery Events",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(libp2p_mdns_discovered_total[5m])",
+          "legendFormat": "{{instance}} - Peers Discovered",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(libp2p_mdns_expired_total[5m])",
+          "legendFormat": "{{instance}} - Peers Expired",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Request/Response Failures",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(libp2p_request_response_inbound_failures_total[5m])",
+          "legendFormat": "{{instance}} - Inbound Failures",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(libp2p_request_response_outbound_failures_total[5m])",
+          "legendFormat": "{{instance}} - Outbound Failures",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ops"
+        }
+      }
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "5s"
+}

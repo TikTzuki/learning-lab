@@ -1,0 +1,213 @@
+services:
+  kafka:
+    image: bitnami/kafka:3.6.1
+    hostname: kafka
+    environment:
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_RETENTION_HOURS: 8
+    ports:
+      - "9094:9094"
+    networks:
+      - mdns_network
+  haproxy-lb1:
+    image: haproxy:alpine
+    container_name: haproxy-lb1
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - mdns_network
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+      - "8404:8404"
+
+  #  haproxy_lb2:
+  #    image: haproxy:alpine
+  #    container_name: haproxy-lb2
+  #    volumes:
+  #      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+  #    networks:
+  #      - mdns_network
+  #    restart: unless-stopped
+  #    ports:
+  #      - "3001:3000"
+  #      - "8081:8080"
+  #  nginx_lb:
+  #    image: nginx:alpine
+  #    container_name: nginx-loadbalancer
+  #    ports:
+  #      - "80:80"
+  #      - "8080:8080"
+  #    volumes:
+  #      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #    networks:
+  #      - mdns_network
+  #    restart: unless-stopped
+  #    depends_on:
+  #      - mdns_rr_node1
+  #      - mdns_rr_node2
+  #      - mdns_rr_node3
+  #    deploy:
+  #      resources:
+  #        limits:
+  #          cpus: '0.5'
+  #          memory: 128M
+
+  node1:
+    image: tiktuzki/mdns_rr:latest
+    container_name: node1
+    hostname: node1
+    ports:
+      - "8090:8080"
+      - "3010:3000"
+    expose:
+      - "8080"
+      - "3000"
+    environment:
+      - APP__SERVER__LISTEN_ADDRESS=/ip4/0.0.0.0/tcp/0
+      - APP__WEBSOCKET__HOST=0.0.0.0
+      - APP__WEBSOCKET__PORT=3000
+      - APP__LOGGING__LEVEL=info
+      - APP__LOGGING__ENABLE_DEBUG=false
+      - APP__METRICS__ENABLED=true
+      - APP__METRICS__ADDRESS=0.0.0.0:8080
+      - APP__KAFKA__BOOTSTRAP_SERVERS=kafka:9092
+    #      - RUST_LOG=info,libp2p_tcp=debug
+    #      - RUST_LOG=info,libp2p_gossipsub=debug
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./logs:/app/logs
+    networks:
+      - mdns_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2GB
+        reservations:
+          cpus: '1'
+  node2:
+    image: tiktuzki/mdns_rr:latest
+    container_name: node2
+    hostname: node2
+    expose:
+      - "8080"
+      - "3000"
+    environment:
+      - APP__SERVER__LISTEN_ADDRESS=/ip4/0.0.0.0/tcp/0
+      - APP__WEBSOCKET__HOST=0.0.0.0
+      - APP__WEBSOCKET__PORT=3000
+      - APP__LOGGING__LEVEL=info
+      - APP__LOGGING__ENABLE_DEBUG=false
+      - APP__METRICS__ENABLED=true
+      - APP__METRICS__ADDRESS=0.0.0.0:8080
+      - APP__KAFKA__BOOTSTRAP_SERVERS=kafka:9092
+    #      - RUST_LOG=info,libp2p_gossipsub=debug
+    #      - RUST_LOG=info,libp2p_tcp=debug
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./logs:/app/logs
+    networks:
+      - mdns_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2GB
+        reservations:
+          cpus: '1'
+  node3:
+    image: tiktuzki/mdns_rr:latest
+    container_name: node3
+    hostname: node3
+    expose:
+      - "8080"
+      - "3000"
+    environment:
+      - APP__SERVER__LISTEN_ADDRESS=/ip4/0.0.0.0/tcp/0
+      - APP__WEBSOCKET__HOST=0.0.0.0
+      - APP__WEBSOCKET__PORT=3000
+      - APP__LOGGING__LEVEL=info
+      - APP__LOGGING__ENABLE_DEBUG=false
+      - APP__METRICS__ENABLED=true
+      - APP__METRICS__ADDRESS=0.0.0.0:8080
+      - APP__KAFKA__BOOTSTRAP_SERVERS=kafka:9092
+    #      - RUST_LOG=info,libp2p_gossipsub=debug
+    #      - RUST_LOG=info,libp2p_tcp=debug
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./logs:/app/logs
+    networks:
+      - mdns_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2GB
+        reservations:
+          cpus: '1'
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: prometheus
+#    ports:
+#      - "9093:9090"
+#    volumes:
+#      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#      - prometheus_data:/prometheus
+#    command:
+#      - '--settings.file=/etc/prometheus/prometheus.yml'
+#      - '--storage.tsdb.path=/prometheus'
+#      - '--web.console.libraries=/etc/prometheus/console_libraries'
+#      - '--web.console.templates=/etc/prometheus/consoles'
+#      - '--web.enable-lifecycle'
+#    networks:
+#      - mdns_network
+#    restart: unless-stopped
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.3'
+#          memory: 256M
+#
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: grafana
+#    ports:
+#      - "3000:3000"
+#    environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+#    networks:
+#      - mdns_network
+#    restart: unless-stopped
+#    depends_on:
+#      - prometheus
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.3'
+#          memory: 256M
+
+networks:
+  mdns_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+#volumes:
+#  prometheus_data:
+#  grafana_data:

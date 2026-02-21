@@ -1,0 +1,12 @@
+[package]
+name = "kademlia"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libp2p = { version = "0.56.0", features = ["tcp", "tls", "kad", "identify", "request-response", "cbor", "tokio", "dns", "noise", "yamux", "macros"] }
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.47.0", features = ["full"] }
+log = { workspace = true }
+env_logger = { workspace = true }
+

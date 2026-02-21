@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Kafka Producer Benchmark</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready {
+            background-color: #28a745;
+        }
+
+        .status-running {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-error {
+            background-color: #dc3545;
+        }
+
+        .status-completed {
+            background-color: #17a2b8;
+        }
+
+        .metric-card {
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .progress-container {
+            display: none;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .message-size-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+
+        .kafka-info {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <button class="navbar-toggler" data-bs-target="#navbarNav" data-bs-toggle="collapse" type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="results.html">Results</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="monitor.html">Monitor</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-stream me-2"></i>Kafka Producer Benchmark</h1>
+            <p class="text-muted">Test high-throughput message streaming performance with configurable message sizes and
+                producer settings</p>
+        </div>
+    </div>
+
+    <!-- Kafka Info -->
+    <div class="row">
+        <div class="col-12">
+            <div class="kafka-info">
+                <h6><i class="fas fa-info-circle me-2"></i>About Kafka Producer Testing</h6>
+                <p class="mb-0">This test measures the performance of producing messages to Kafka topics through
+                    WebSocket connections.
+                    It simulates real-world streaming scenarios with configurable message sizes, batch settings, and
+                    throughput targets.
+                    Monitor the logs for detailed producer metrics and performance insights.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Section -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="config-section">
+                <h5 class="mb-3"><i class="fas fa-cog me-2"></i>Producer Configuration</h5>
+                <form id="benchmarkForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="wsAddress">WebSocket Server Address</label>
+                            <input class="form-control" id="wsAddress" required type="text" value="127.0.0.1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="wsPort">WebSocket Server Port</label>
+                            <input class="form-control" id="wsPort" required type="number" value="9092">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="connectionInterval">Number of Producers</label>
+                            <input class="form-control" id="connectionInterval" max="100" min="1" required
+                                   type="number" value="5">
+                            <div class="form-text">Number of concurrent Kafka producer connections</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="requestInterval">Messages per Producer</label>
+                            <input class="form-control" id="requestInterval" max="100000" min="1" required
+                                   type="number" value="1000">
+                            <div class="form-text">Number of messages each producer will send</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="messageSizeKB">Message Size (KB)</label>
+                            <input class="form-control" id="messageSizeKB" max="1024" min="0.1" step="0.1" type="number"
+                                   value="1">
+                            <div class="form-text message-size-info">
+                                <span id="messageSizeInfo">Approximately 1024 characters ('a' repeated)</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="rounds">Test Rounds</label>
+                            <input class="form-control" id="rounds" max="10" min="1" required type="number" value="1">
+                            <div class="form-text">Number of complete test cycles to run</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="kafkaTopic">Kafka Topic</label>
+                            <input class="form-control" id="kafkaTopic" type="text" value="benchmark-topic">
+                            <div class="form-text">Target Kafka topic for message production</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="batchSize">Batch Size</label>
+                            <input class="form-control" id="batchSize" max="10000" min="1" type="number" value="100">
+                            <div class="form-text">Number of messages to batch before sending</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-success me-2" id="startBtn" type="submit">
+                                <i class="fas fa-play me-1"></i>Start Producer Test
+                            </button>
+                            <button class="btn btn-danger me-2" disabled id="stopBtn" type="button">
+                                <i class="fas fa-stop me-1"></i>Stop Test
+                            </button>
+                            <a class="btn btn-info" href="monitor.html">
+                                <i class="fas fa-eye me-1"></i>View Logs
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <span class="status-indicator status-ready" id="statusIndicator"></span>
+                        <span id="statusText">Ready</span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="statusDetails">
+                        <p class="text-muted mb-0">Configure producer parameters and start the benchmark</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expected Throughput Calculator -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Expected Throughput</h6>
+                </div>
+                <div class="card-body">
+                    <div id="throughputCalc">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Total Messages:</small>
+                                <div class="fw-bold" id="totalMessages">5,000</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Total Data:</small>
+                                <div class="fw-bold" id="totalData">5 MB</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="row progress-container" id="progressContainer">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Producer Progress</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Producers Connected: <span id="connectionProgress">0/0</span></label>
+                        <div class="progress">
+                            <div class="progress-bar" id="connectionProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Messages Sent: <span id="requestProgress">0/0</span></label>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" id="requestProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Real-time Metrics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card metric-card h-100">
+                                <div class="card-body text-center">
+                                    <h4 class="text-success mb-1" id="throughputMetric">0</h4>
+                                    <small class="text-muted">Messages/sec</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card metric-card h-100">
+                                <div class="card-body text-center">
+                                    <h4 class="text-info mb-1" id="dataThroughputMetric">0</h4>
+                                    <small class="text-muted">MB/sec</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card metric-card h-100">
+                                <div class="card-body text-center">
+                                    <h4 class="text-warning mb-1" id="successRateMetric">0</h4>
+                                    <small class="text-muted">Success Rate (%)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card metric-card h-100">
+                                <div class="card-body text-center">
+                                    <h4 class="text-primary mb-1" id="activeProducersMetric">0</h4>
+                                    <small class="text-muted">Active Producers</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+    let currentBenchmarkId = null;
+    let statusCheckInterval = null;
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function () {
+        updateMessageSizeInfo();
+        updateThroughputCalc();
+
+        document.getElementById('messageSizeKB').addEventListener('input', function () {
+            updateMessageSizeInfo();
+            updateThroughputCalc();
+        });
+        document.getElementById('connectionInterval').addEventListener('input', updateThroughputCalc);
+        document.getElementById('requestInterval').addEventListener('input', updateThroughputCalc);
+
+        document.getElementById('benchmarkForm').addEventListener('submit', startBenchmark);
+        document.getElementById('stopBtn').addEventListener('click', stopBenchmark);
+    });
+
+    // Helper function to format numbers
+    function formatNumber(num) {
+        return num.toLocaleString();
+    }
+
+    function updateMessageSizeInfo() {
+        const sizeKB = parseFloat(document.getElementById('messageSizeKB').value);
+        const chars = Math.floor(sizeKB * 1024);
+        document.getElementById('messageSizeInfo').textContent =
+            `Approximately ${formatNumber(chars)} characters ('a' repeated)`;
+    }
+
+    function updateThroughputCalc() {
+        const producers = parseInt(document.getElementById('connectionInterval').value) || 0;
+        const messagesPerProducer = parseInt(document.getElementById('requestInterval').value) || 0;
+        const messageSizeKB = parseFloat(document.getElementById('messageSizeKB').value) || 0;
+
+        const totalMessages = producers * messagesPerProducer;
+        const totalDataMB = (totalMessages * messageSizeKB) / 1024;
+
+        document.getElementById('totalMessages').textContent = formatNumber(totalMessages);
+        document.getElementById('totalData').textContent = totalDataMB.toFixed(2) + ' MB';
+    }
+
+    function updateStatus(status, message) {
+        const indicator = document.getElementById('statusIndicator');
+        const text = document.getElementById('statusText');
+        const details = document.getElementById('statusDetails');
+
+        indicator.className = `status-indicator status-${status}`;
+        text.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        details.innerHTML = `<p class="mb-0">${message}</p>`;
+    }
+
+    function resetUI() {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('progressContainer').style.display = 'none';
+        currentBenchmarkId = null;
+    }
+
+    async function startBenchmark(event) {
+        event.preventDefault();
+
+        const config = {
+            wsAddress: document.getElementById('wsAddress').value,
+            wsPort: parseInt(document.getElementById('wsPort').value),
+            connectionInterval: parseInt(document.getElementById('connectionInterval').value),
+            requestInterval: parseInt(document.getElementById('requestInterval').value),
+            messageSizeKB: parseFloat(document.getElementById('messageSizeKB').value),
+            rounds: parseInt(document.getElementById('rounds').value),
+            kafkaTopic: document.getElementById('kafkaTopic').value,
+            batchSize: parseInt(document.getElementById('batchSize').value)
+        };
+
+        try {
+            updateStatus('running', 'Starting Kafka producer benchmark...');
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('progressContainer').style.display = 'block';
+
+            const result = await api.startBenchmark('kafka-producer', config);
+            currentBenchmarkId = result.benchmarkId;
+
+            updateStatus('running', `Producer benchmark started (ID: ${result.benchmarkId})`);
+            startStatusPolling();
+
+        } catch (error) {
+            console.error('Error starting benchmark:', error);
+            updateStatus('error', `Error: ${error.message}`);
+            resetUI();
+        }
+    }
+
+    async function stopBenchmark() {
+        if (!currentBenchmarkId) return;
+
+        try {
+            await api.stopBenchmark(currentBenchmarkId);
+            updateStatus('completed', 'Producer benchmark stopped by user');
+            stopStatusPolling();
+            resetUI();
+        } catch (error) {
+            console.error('Error stopping benchmark:', error);
+            updateStatus('error', `Error stopping: ${error.message}`);
+        }
+    }
+
+    function startStatusPolling() {
+        if (statusCheckInterval) clearInterval(statusCheckInterval);
+
+        statusCheckInterval = setInterval(async () => {
+            if (!currentBenchmarkId) return;
+
+            try {
+                const status = await api.getBenchmarkStatus(currentBenchmarkId);
+                updateProgress(status);
+                updateMetrics(status.metrics);
+
+                if (status.status === 'completed' || status.status === 'error') {
+                    updateStatus(status.status, `Producer benchmark ${status.status}`);
+                    stopStatusPolling();
+                    resetUI();
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }, 1000);
+    }
+
+    function stopStatusPolling() {
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+        }
+    }
+
+    function updateProgress(status) {
+        const connectionProgress = document.getElementById('connectionProgress');
+        const connectionProgressBar = document.getElementById('connectionProgressBar');
+        const requestProgress = document.getElementById('requestProgress');
+        const requestProgressBar = document.getElementById('requestProgressBar');
+
+        // Calculate progress percentages
+        const connPercent = Math.min(100, status.progress.connection || 0);
+        const reqPercent = Math.min(100, status.progress.benchmark || 0);
+
+        // Update connection progress
+        const totalConnections = parseInt(document.getElementById('connectionInterval').value) || 0;
+        const currentConnections = Math.round((connPercent / 100) * totalConnections);
+        connectionProgress.textContent = `${currentConnections}/${totalConnections}`;
+        connectionProgressBar.style.width = `${connPercent}%`;
+
+        // Update request progress
+        const totalRequests = totalConnections * (parseInt(document.getElementById('requestInterval').value) || 0);
+        const currentRequests = Math.round((reqPercent / 100) * totalRequests);
+        requestProgress.textContent = `${currentRequests}/${totalRequests}`;
+        requestProgressBar.style.width = `${reqPercent}%`;
+    }
+
+    function updateMetrics(metrics) {
+        if (!metrics) return;
+
+        const messageSizeKB = parseFloat(document.getElementById('messageSizeKB').value) || 1;
+        const dataThroughputMBps = ((metrics.throughput || 0) * messageSizeKB) / 1024;
+
+        document.getElementById('throughputMetric').textContent = formatNumber(Math.round(metrics.throughput || 0));
+        document.getElementById('dataThroughputMetric').textContent = dataThroughputMBps.toFixed(2);
+        document.getElementById('successRateMetric').textContent = (metrics.successRate || 0).toFixed(1);
+        document.getElementById('activeProducersMetric').textContent = formatNumber(metrics.messagesSent || 0);
+    }
+
+    // Initialize status
+    updateStatus('ready', 'Configure producer parameters and start the benchmark');
+</script>
+</body>
+</html>

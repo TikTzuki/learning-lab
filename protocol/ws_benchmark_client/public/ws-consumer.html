@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>WebSocket Consumer Benchmark</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready {
+            background-color: #28a745;
+        }
+
+        .status-running {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-error {
+            background-color: #dc3545;
+        }
+
+        .status-completed {
+            background-color: #17a2b8;
+        }
+
+        .metric-card {
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .progress-container {
+            display: none;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        .consumption-rate {
+            height: 200px;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="index.html">Home</a>
+            <a class="nav-link" href="results.html">Results</a>
+            <a class="nav-link" href="monitor.html">Monitor</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-download me-2"></i>WebSocket Consumer Benchmark</h2>
+                <div>
+                    <span class="status-indicator status-ready" id="statusIndicator"></span>
+                    <span id="statusText">Ready</span>
+                </div>
+            </div>
+            <p class="text-muted">Test WebSocket message consumption performance with real-time metrics and configurable
+                consumer settings</p>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                This benchmark creates WebSocket consumers that listen for incoming messages.
+                Monitor the logs for detailed consumer metrics and performance insights.
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Configuration Panel -->
+        <div class="col-md-6">
+            <div class="config-section">
+                <h5><i class="fas fa-globe me-2"></i>WebSocket Configuration</h5>
+                <form id="wsConfigForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="consumerType">Consumer Type</label>
+                                <select class="form-select" id="consumerType">
+                                    <option value="socketio-consumer">Socket.IO</option>
+                                    <option value="ws-consumer">Standard WebSocket</option>
+                                </select>
+                                <div class="form-text">Choose between standard WebSocket or Socket.IO consumer</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="wsAddress">Server Address</label>
+                                <input class="form-control" id="wsAddress" placeholder="127.0.0.1" type="text"
+                                       value="127.0.0.1">
+                                <div class="form-text">WebSocket/Socket.IO server address</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="wsPort">Server Port</label>
+                                <input class="form-control" id="wsPort" max="65535" min="1" type="number" value="3000">
+                                <div class="form-text">Server port number</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6" id="socketioPathContainer" style="display: block;">
+                            <div class="mb-3">
+                                <label class="form-label" for="socketioPath">Socket.IO Path</label>
+                                <input class="form-control" id="socketioPath" placeholder="/socket.io" type="text"
+                                       value="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6" id="connectionCountContainer">
+                            <div class="mb-3">
+                                <label class="form-label" for="connectionCount">Consumer Connections</label>
+                                <input class="form-control" id="connectionCount" max="1000" min="1" type="number"
+                                       value="10">
+                                <div class="form-text">Number of concurrent consumer connections</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="consumeMsgLimit">Message Limit</label>
+                                <input class="form-control" id="consumeMsgLimit" min="1" type="number" value="1000">
+                                <div class="form-text">Maximum messages to consume before stopping</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="consumerDuration">Duration (seconds)</label>
+                                <input class="form-control" id="consumerDuration" min="1" type="number" value="60">
+                                <div class="form-text">Maximum duration to run consumers</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-success flex-fill" id="startBtn">
+                        <i class="fas fa-play me-1"></i>Start Consumer
+                    </button>
+                    <button class="btn btn-danger flex-fill" id="stopBtn" style="display: none;">
+                        <i class="fas fa-stop me-1"></i>Stop Consumer
+                    </button>
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Consumer Connections</span>
+                            <span id="connectionStatus">0/0 connected</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 id="connectionProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Message Consumption</span>
+                            <span id="consumptionStatus">0/0 messages</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                 id="consumptionProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Panel -->
+        <div class="col-md-6">
+            <div class="config-section">
+                <h5><i class="fas fa-chart-bar me-2"></i>Real-time Metrics</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Messages Consumed</h6>
+                                <h4 class="card-text text-primary" id="messagesConsumed">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Consumption Rate</h6>
+                                <h4 class="card-text text-success" id="consumptionRate">0 msg/s</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Active Consumers</h6>
+                                <h4 class="card-text text-info" id="activeConsumers">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Elapsed Time</h6>
+                                <h4 class="card-text text-warning" id="elapsedTime">0s</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="config-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-file-alt me-2"></i>Consumer Logs</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="pauseLogs">
+                            <i class="fas fa-pause me-1"></i>Pause
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" id="clearLogs">
+                            <i class="fas fa-trash me-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="text-muted">Logs will appear here when the consumer starts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/api.js"></script>
+<script>
+    // Global variables
+    let currentBenchmarkId = null;
+    let statusPollingInterval = null;
+    let logPollingActive = false;
+    let lastLogId = 0;
+    let logsPaused = false;
+
+    // DOM elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const progressContainer = document.getElementById('progressContainer');
+    const logContainer = document.getElementById('logContainer');
+
+    // Event listeners
+    startBtn.addEventListener('click', startConsumer);
+    stopBtn.addEventListener('click', stopConsumer);
+    document.getElementById('clearLogs').addEventListener('click', clearLogs);
+    document.getElementById('pauseLogs').addEventListener('click', toggleLogs);
+    document.getElementById('consumerType').addEventListener('change', toggleSocketIOPath);
+
+    function updateStatus(status, text) {
+        statusIndicator.className = `status-indicator status-${status}`;
+        statusText.textContent = text;
+    }
+
+    function resetUI() {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        startBtn.style.display = 'block';
+        stopBtn.style.display = 'none';
+        progressContainer.style.display = 'none';
+    }
+
+    async function startConsumer() {
+        const connectionCount = parseInt(document.getElementById('connectionCount').value) || 10;
+        const consumeMsgLimit = parseInt(document.getElementById('consumeMsgLimit').value) || 1000;
+        const consumerDuration = parseInt(document.getElementById('consumerDuration').value) || 60;
+        const consumerType = document.getElementById('consumerType').value; // Get selected consumer type
+
+        const config = {
+            wsAddress: document.getElementById('wsAddress').value,
+            wsPort: parseInt(document.getElementById('wsPort').value),
+            connectionCount: connectionCount,
+            consumeMsgLimit: consumeMsgLimit,
+            consumerDuration: consumerDuration * 1000, // Convert to milliseconds
+            rounds: 1,
+            path: null
+        };
+
+        // Add Socket.IO specific configuration
+        if (consumerType === 'socketio-consumer' && document.getElementById('socketioPath').value != null) {
+            const socketioPath = document.getElementById('socketioPath').value;
+            config.path = socketioPath
+        }
+
+        try {
+            const consumerTypeText = consumerType === 'socketio-consumer' ? 'Socket.IO' : 'WebSocket';
+            updateStatus('running', `Starting ${consumerTypeText} consumer benchmark...`);
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+            progressContainer.style.display = 'block';
+
+            // Use the selected consumer type instead of hardcoded 'ws-consumer'
+            const result = await api.startBenchmark(consumerType, config);
+            currentBenchmarkId = result.benchmarkId;
+
+            updateStatus('running', `${consumerTypeText} consumer benchmark started (ID: ${result.benchmarkId})`);
+            startStatusPolling();
+            startLogPolling();
+
+        } catch (error) {
+            console.error('Error starting benchmark:', error);
+            updateStatus('error', `Error: ${error.message}`);
+            resetUI();
+        }
+    }
+
+    async function stopConsumer() {
+        if (!currentBenchmarkId) return;
+
+        try {
+            await api.stopBenchmark(currentBenchmarkId);
+            updateStatus('completed', 'Consumer benchmark stopped by user');
+            stopStatusPolling();
+            stopLogPolling();
+            resetUI();
+        } catch (error) {
+            console.error('Error stopping benchmark:', error);
+            updateStatus('error', `Error stopping benchmark: ${error.message}`);
+        }
+    }
+
+    function startStatusPolling() {
+        if (statusPollingInterval) return;
+
+        statusPollingInterval = setInterval(async () => {
+            if (!currentBenchmarkId) return;
+
+            try {
+                const status = await api.getBenchmarkStatus(currentBenchmarkId);
+                updateBenchmarkStatus(status);
+
+                if (status.status === 'completed' || status.status === 'error') {
+                    stopStatusPolling();
+                    resetUI();
+                    if (status.status === 'completed') {
+                        updateStatus('completed', 'Consumer benchmark completed');
+                    } else {
+                        updateStatus('error', 'Consumer benchmark failed');
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }, 1000);
+    }
+
+    function stopStatusPolling() {
+        if (statusPollingInterval) {
+            clearInterval(statusPollingInterval);
+            statusPollingInterval = null;
+        }
+    }
+
+    function updateBenchmarkStatus(status) {
+        // Update progress bars
+        const connectionProgress = Math.min(100, status.progress.connection);
+        const benchmarkProgress = Math.min(100, status.progress.benchmark);
+
+        document.getElementById('connectionProgress').style.width = `${connectionProgress}%`;
+        document.getElementById('consumptionProgress').style.width = `${benchmarkProgress}%`;
+
+        // Update metrics
+        document.getElementById('messagesConsumed').textContent = status.metrics.responsesReceived.toLocaleString();
+        document.getElementById('consumptionRate').textContent = `${status.metrics.throughput.toFixed(1)} msg/s`;
+        document.getElementById('activeConsumers').textContent = document.getElementById('connectionCount').value;
+
+        const elapsed = (Date.now() - status.startTime) / 1000;
+        document.getElementById('elapsedTime').textContent = `${elapsed.toFixed(0)}s`;
+
+        // Update status text
+        document.getElementById('connectionStatus').textContent = `${Math.round(connectionProgress)}% connected`;
+        document.getElementById('consumptionStatus').textContent = `${status.metrics.responsesReceived}/${document.getElementById('consumeMsgLimit').value} messages`;
+    }
+
+    async function startLogPolling() {
+        if (logPollingActive) return;
+
+        try {
+            await api.startLogPolling();
+            logPollingActive = true;
+            pollLogs();
+        } catch (error) {
+            console.error('Error starting log polling:', error);
+        }
+    }
+
+    async function stopLogPolling() {
+        if (!logPollingActive) return;
+
+        try {
+            await api.stopLogPolling();
+            logPollingActive = false;
+        } catch (error) {
+            console.error('Error stopping log polling:', error);
+        }
+    }
+
+    async function pollLogs() {
+        if (!logPollingActive) return;
+
+        try {
+            const response = await api.pollLogs(lastLogId, 30000);
+            if (response.logs && response.logs.length > 0) {
+                response.logs.forEach(log => addLogEntry(log));
+                lastLogId = Math.max(...response.logs.map(log => log.id));
+            }
+
+            // Continue polling if still active
+            if (logPollingActive) {
+                setTimeout(pollLogs, 100);
+            }
+        } catch (error) {
+            console.error('Error polling logs:', error);
+            if (logPollingActive) {
+                setTimeout(pollLogs, 5000); // Retry after 5 seconds
+            }
+        }
+    }
+
+    function addLogEntry(log) {
+        if (logsPaused) return;
+
+        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry text-${getLogClass(log.level)}`;
+
+        const sourceText = log.source ? `[${log.source}]` : '';
+        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${sourceText} ${log.message}`;
+
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+
+        // Keep only last 500 log entries for performance
+        while (logContainer.children.length > 500) {
+            logContainer.removeChild(logContainer.firstChild);
+        }
+    }
+
+    function getLogClass(level) {
+        switch (level) {
+            case 'error':
+                return 'danger';
+            case 'warn':
+                return 'warning';
+            case 'info':
+                return 'primary';
+            case 'debug':
+                return 'secondary';
+            default:
+                return 'dark';
+        }
+    }
+
+    function clearLogs() {
+        logContainer.innerHTML = '<div class="text-muted">Logs cleared...</div>';
+    }
+
+    function toggleLogs() {
+        logsPaused = !logsPaused;
+        const btn = document.getElementById('pauseLogs');
+        btn.innerHTML = logsPaused ?
+            '<i class="fas fa-play me-1"></i>Resume' :
+            '<i class="fas fa-pause me-1"></i>Pause';
+    }
+
+    function toggleSocketIOPath() {
+        const consumerType = document.getElementById('consumerType').value;
+        const socketioPathContainer = document.getElementById('socketioPathContainer');
+
+        if (consumerType === 'socketio-consumer') {
+            socketioPathContainer.style.display = 'block';
+        } else {
+            socketioPathContainer.style.display = 'none';
+        }
+    }
+
+    // Initialize
+    updateStatus('ready', 'Ready');
+    addLogEntry({
+        id: 0,
+        timestamp: Date.now(),
+        level: 'info',
+        message: 'WebSocket Consumer benchmark ready',
+        source: 'UI'
+    });
+</script>
+</body>
+</html>

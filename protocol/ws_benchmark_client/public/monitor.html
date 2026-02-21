@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Monitor - WebSocket Benchmark Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .log-container {
+            height: 400px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .log-timestamp {
+            color: #888;
+        }
+
+        .log-level-info {
+            color: #4CAF50;
+        }
+
+        .log-level-warn {
+            color: #FF9800;
+        }
+
+        .log-level-error {
+            color: #F44336;
+        }
+
+        .log-level-debug {
+            color: #2196F3;
+        }
+
+        .log-source {
+            color: #9C27B0;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-active {
+            background-color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-inactive {
+            background-color: #F44336;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .btn-group .btn {
+            margin-right: 5px;
+        }
+
+        .scenario-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .scenario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <button class="navbar-toggler" data-bs-target="#navbarNav" data-bs-toggle="collapse" type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="results.html">Results</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="monitor.html">Monitor</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-desktop me-2"></i>System Monitor</h1>
+            <p class="text-muted">Real-time monitoring and log viewer</p>
+        </div>
+    </div>
+
+    <!-- Quick Start Test Scenarios -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-play-circle me-2"></i>Quick Start Tests</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card scenario-card h-100" onclick="startQuickTest('request-response')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-exchange-alt fa-2x text-primary mb-2"></i>
+                                    <h6>Request/Response</h6>
+                                    <small class="text-muted">WebSocket bidirectional test</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card scenario-card h-100" onclick="startQuickTest('kafka-producer')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-stream fa-2x text-success mb-2"></i>
+                                    <h6>Kafka Producer</h6>
+                                    <small class="text-muted">Message streaming test</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card scenario-card h-100" onclick="startQuickTest('ws-consumer')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-download fa-2x text-info mb-2"></i>
+                                    <h6>WS Consumer</h6>
+                                    <small class="text-muted">WebSocket consumer test</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card scenario-card h-100" onclick="startQuickTest('socketio-consumer')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-satellite-dish fa-2x text-warning mb-2"></i>
+                                    <h6>Socket.IO Consumer</h6>
+                                    <small class="text-muted">Socket.IO consumer test</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Monitor -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>Server Logs
+                        <span class="status-indicator" id="logStatus"></span>
+                        <span id="logStatusText">Inactive</span>
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-success" id="startLogBtn" onclick="startLogPolling()"
+                                type="button">
+                            <i class="fas fa-play me-1"></i>Start Polling
+                        </button>
+                        <button class="btn btn-sm btn-danger" disabled id="stopLogBtn" onclick="stopLogPolling()"
+                                type="button">
+                            <i class="fas fa-stop me-1"></i>Stop Polling
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="clearLogs()" type="button">
+                            <i class="fas fa-trash me-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="log-container" id="logContainer">
+                        <div class="text-center text-muted p-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Logs will appear here when polling is active or when a test is started.
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Log polling starts automatically when you begin a test. Use the Stop Polling button to disable
+                        real-time updates.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-server me-2"></i>System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="systemStatus">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Active Benchmarks</h5>
+                </div>
+                <div class="card-body">
+                    <div id="activeBenchmarks">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+    let logPollingActive = false;
+    let lastLogId = 0;
+    let pollingController = null;
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function () {
+        checkLogStatus();
+        loadSystemStatus();
+        loadActiveBenchmarks();
+
+        // Refresh system status every 10 seconds
+        setInterval(() => {
+            loadSystemStatus();
+            loadActiveBenchmarks();
+        }, 10000);
+    });
+
+    async function checkLogStatus() {
+        try {
+            const response = await fetch('/api/logs/status');
+            const result = await response.json();
+            updateLogStatus(result.loggingEnabled);
+        } catch (error) {
+            console.error('Error checking log status:', error);
+            updateLogStatus(false);
+        }
+    }
+
+    function updateLogStatus(isActive) {
+        const statusIndicator = document.getElementById('logStatus');
+        const statusText = document.getElementById('logStatusText');
+        const startBtn = document.getElementById('startLogBtn');
+        const stopBtn = document.getElementById('stopLogBtn');
+
+        if (isActive) {
+            statusIndicator.className = 'status-indicator status-active';
+            statusText.textContent = 'Active';
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            if (!logPollingActive) {
+                startLogPollingInternal();
+            }
+        } else {
+            statusIndicator.className = 'status-indicator status-inactive';
+            statusText.textContent = 'Inactive';
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            logPollingActive = false;
+            if (pollingController) {
+                pollingController.abort();
+            }
+        }
+    }
+
+    async function startLogPolling() {
+        try {
+            const response = await fetch('/api/logs/start', {method: 'POST'});
+            const result = await response.json();
+            if (result.success) {
+                updateLogStatus(true);
+                addLogEntry('info', 'Log polling started manually', 'UI', new Date());
+            }
+        } catch (error) {
+            console.error('Error starting log polling:', error);
+            addLogEntry('error', 'Failed to start log polling: ' + error.message, 'UI', new Date());
+        }
+    }
+
+    async function stopLogPolling() {
+        try {
+            const response = await fetch('/api/logs/stop', {method: 'POST'});
+            const result = await response.json();
+            if (result.success) {
+                updateLogStatus(false);
+                addLogEntry('info', 'Log polling stopped manually', 'UI', new Date());
+            }
+        } catch (error) {
+            console.error('Error stopping log polling:', error);
+            addLogEntry('error', 'Failed to stop log polling: ' + error.message, 'UI', new Date());
+        }
+    }
+
+    async function startLogPollingInternal() {
+        if (logPollingActive) return;
+
+        logPollingActive = true;
+
+        while (logPollingActive) {
+            try {
+                pollingController = new AbortController();
+                const response = await fetch(`/api/logs/poll?lastLogId=${lastLogId}&timeout=30000`, {
+                    signal: pollingController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.stopped) {
+                    logPollingActive = false;
+                    break;
+                }
+
+                if (result.logs && result.logs.length > 0) {
+                    result.logs.forEach(log => {
+                        addLogEntry(log.level, log.message, log.source, new Date(log.timestamp));
+                        lastLogId = Math.max(lastLogId, log.id);
+                    });
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Log polling error:', error);
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+            }
+        }
+    }
+
+    function addLogEntry(level, message, source, timestamp) {
+        const logContainer = document.getElementById('logContainer');
+
+        // Clear the initial message if present
+        if (logContainer.querySelector('.text-muted')) {
+            logContainer.innerHTML = '';
+        }
+
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+
+        const timeStr = timestamp.toLocaleTimeString();
+        const sourceStr = source ? `[${source}]` : '';
+
+        logEntry.innerHTML = `
+                <span class="log-timestamp">${timeStr}</span>
+                <span class="log-level-${level}">${level.toUpperCase()}</span>
+                <span class="log-source">${sourceStr}</span>
+                <span class="log-message">${message}</span>
+            `;
+
+        logContainer.appendChild(logEntry);
+
+        // Auto-scroll to bottom
+        logContainer.scrollTop = logContainer.scrollHeight;
+
+        // Keep only last 1000 entries
+        while (logContainer.children.length > 1000) {
+            logContainer.removeChild(logContainer.firstChild);
+        }
+    }
+
+    async function clearLogs() {
+        try {
+            const response = await fetch('/api/logs', {method: 'DELETE'});
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('logContainer').innerHTML = `
+                        <div class="text-center text-muted p-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Logs cleared. New logs will appear here.
+                        </div>
+                    `;
+                lastLogId = 0;
+                addLogEntry('info', 'Logs cleared', 'UI', new Date());
+            }
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+            addLogEntry('error', 'Failed to clear logs: ' + error.message, 'UI', new Date());
+        }
+    }
+
+    async function loadSystemStatus() {
+        try {
+            const response = await fetch('/api/system/status');
+            const status = await response.json();
+
+            const uptimeHours = Math.floor(status.uptime / 3600);
+            const uptimeMinutes = Math.floor((status.uptime % 3600) / 60);
+            const memoryUsedMB = Math.round(status.memory.used / 1024 / 1024);
+            const memoryTotalMB = Math.round(status.memory.rss / 1024 / 1024);
+
+            document.getElementById('systemStatus').innerHTML = `
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <strong>Status:</strong>
+                            <span class="badge bg-success">${status.status}</span>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <strong>Uptime:</strong> ${uptimeHours}h ${uptimeMinutes}m
+                        </div>
+                        <div class="col-6 mb-2">
+                            <strong>Memory:</strong> ${memoryUsedMB}MB / ${memoryTotalMB}MB
+                        </div>
+                        <div class="col-6 mb-2">
+                            <strong>Active Connections:</strong> ${status.activeConnections}
+                        </div>
+                    </div>
+                `;
+        } catch (error) {
+            document.getElementById('systemStatus').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading system status
+                    </div>
+                `;
+        }
+    }
+
+    async function loadActiveBenchmarks() {
+        try {
+            const response = await fetch('/api/benchmark/list');
+            const benchmarks = await response.json();
+
+            if (benchmarks.length === 0) {
+                document.getElementById('activeBenchmarks').innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-tasks me-2"></i>
+                            No active benchmarks
+                        </div>
+                    `;
+            } else {
+                const benchmarksList = benchmarks.map(benchmark => `
+                        <div class="card mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${benchmark.scenario}</strong>
+                                        <br>
+                                        <small class="text-muted">${benchmark.id}</small>
+                                    </div>
+                                    <span class="badge bg-${benchmark.status === 'running' ? 'primary' :
+                    benchmark.status === 'completed' ? 'success' : 'danger'}">
+                                        ${benchmark.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                document.getElementById('activeBenchmarks').innerHTML = benchmarksList;
+            }
+        } catch (error) {
+            document.getElementById('activeBenchmarks').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading benchmarks
+                    </div>
+                `;
+        }
+    }
+
+    async function startQuickTest(scenario) {
+        const config = {
+            wsAddress: '127.0.0.1',
+            wsPort: 8080,
+            connectionInterval: 5,
+            requestInterval: 50,
+            connectionCount: 10,
+            rounds: 1
+        };
+
+        try {
+            const response = await fetch('/api/benchmark/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({scenario, config})
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                addLogEntry('info', `Quick test started: ${scenario} (${result.benchmarkId})`, 'UI', new Date());
+                // Check if logging is now enabled
+                if (result.loggingEnabled) {
+                    updateLogStatus(true);
+                }
+                // Refresh active benchmarks
+                loadActiveBenchmarks();
+            } else {
+                addLogEntry('error', `Failed to start quick test: ${result.error || 'Unknown error'}`, 'UI', new Date());
+            }
+        } catch (error) {
+            console.error('Error starting quick test:', error);
+            addLogEntry('error', `Error starting quick test: ${error.message}`, 'UI', new Date());
+        }
+    }
+</script>
+</body>
+</html>

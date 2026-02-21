@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>WebSocket Benchmark Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .scenario-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .scenario-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            WebSocket Benchmark Client
+        </a>
+        <button class="navbar-toggler" data-bs-target="#navbarNav" data-bs-toggle="collapse" type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="index.html">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="results.html">Results</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="monitor.html">Monitor</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4">WebSocket & Kafka Benchmark Suite</h1>
+        <p class="lead">Performance testing for WebSocket connections and Kafka message processing</p>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <h2 class="text-center mb-5">Choose Your Benchmark Scenario</h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Kafka Producer Scenario -->
+        <div class="col-md-4">
+            <div class="card scenario-card h-100" onclick="location.href='kafka-producer.html'">
+                <div class="card-body text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-share-alt"></i>
+                    </div>
+                    <h5 class="card-title">Kafka Producer</h5>
+                    <p class="card-text">Benchmark Kafka message production performance with configurable throughput and
+                        message sizes.</p>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-check text-success me-2"></i>Configurable message rates</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Custom message payloads</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Multiple producer instances</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Performance metrics</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary w-100">Start Kafka Producer Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Request/Response Scenario -->
+        <div class="col-md-4">
+            <div class="card scenario-card h-100" onclick="location.href='request-response.html'">
+                <div class="card-body text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <h5 class="card-title">Request/Response</h5>
+                    <p class="card-text">Test WebSocket request-response patterns with latency and throughput
+                        measurements.</p>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-check text-success me-2"></i>Latency measurements</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Concurrent connections</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Request rate control</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Response validation</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary w-100">Start Request/Response Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WebSocket Consumer Scenario -->
+        <div class="col-md-4">
+            <div class="card scenario-card h-100" onclick="location.href='ws-consumer.html'">
+                <div class="card-body text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <h5 class="card-title">WebSocket Consumer</h5>
+                    <p class="card-text">Measure WebSocket message consumption performance and handling
+                        capabilities.</p>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-check text-success me-2"></i>Message consumption rates</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Connection management</li>
+                        <li><i class="fas fa-check text-success me-2"></i>SocketIO support</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Consumption limits</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary w-100">Start Consumer Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Getting Started</h5>
+                    <p class="card-text">
+                        Select a benchmark scenario above to configure and run performance tests. Each scenario provides
+                        real-time monitoring, detailed metrics, and exportable results for analysis.
+                    </p>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-cog me-2"></i>Configure</h6>
+                            <p class="small">Set up connection parameters, message sizes, and test duration.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-play me-2"></i>Execute</h6>
+                            <p class="small">Run benchmarks with real-time progress monitoring.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-chart-bar me-2"></i>Analyze</h6>
+                            <p class="small">View detailed metrics and export results for further analysis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="bg-dark text-light py-4 mt-5">
+    <div class="container text-center">
+        <p>&copy; 2025 WebSocket Benchmark Client. Built for performance testing and analysis.</p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
